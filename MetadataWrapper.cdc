@@ -13,7 +13,7 @@ pub contract MetadataWrapper {
         pub fun resolveView(_ view: Type): AnyStruct?
     }
 
-    pub fun resolveViewsByPath(_ path: PublicPath, address: address, ids: [UInt64], views: [Type]): [AnyStruct]{
+    pub fun resolveViewsByPath(_ path: PublicPath, address: address, ids: [UInt64], views: [Type]): {UInt64, [AnyStruct]]{
         var res: {UInt64, [AnyStruct]] = {}
 
         if let wrapper = acct.borrow<&{MetadataWrapperInterface}>(from: path){
@@ -32,7 +32,7 @@ pub contract MetadataWrapper {
         return res
     }
 
-    pub fun resolveViews(_ type: String,  address: address, ids: [UInt64], views: [Type]): [AnyStruct]{
+    pub fun resolveViews(_ type: String,  address: address, ids: [UInt64], views: [Type]): {UInt64, [AnyStruct]]{
         var res: {UInt64, [AnyStruct]] = {}
 
         if let wrapper = acct.borrow<&{MetadataWrapperInterface}>(from: PublicPath(identifier:type)){
