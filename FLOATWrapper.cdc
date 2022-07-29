@@ -1,12 +1,12 @@
-import FLOAT from 0x2d4c3caffbeab845
+import {{_contract.name}} from {{_contract.address}}
 import MetadataWrapper from 0x
 
-pub contract FLOATWrapper {
+pub contract {{_contract.name}}Wrapper {
 
-    pub fun getRef(account: Address, id: UInt64): &FLOAT.NFT?{
+    pub fun getRef(account: Address, id: UInt64): &{{_contract.name}}.NFT?{
         if let collection = getAccount(account).getCapability(self.contractData["_contract.public_path"]!)
-                                               .borrow<&FLOAT.Collection{FLOAT.CollectionPublic}>(){
-            if let nft = collection.borrowFLOAT(id: id){
+                                               .borrow<&{{_contract.name}}.Collection{{{_contract.name}}.{{_contract.public_iface}}}>(){
+            if let nft = collection.{{_contract.borrow_func}}(id: id){
                 return nft
             }
         }
@@ -15,27 +15,26 @@ pub contract FLOATWrapper {
 
     pub fun getContractAttributes(){
         return {
-            "_contract.type":            Type<FLOAT.NFT>()
             "_contract.name":            "FLOAT",
-            "_contract.address":         Address(0x2d4c3caffbeab845),
+            "_contract.borrow_func":     "borrowFLOAT",
+            "_contract.public_iface":    "CollectionPublic",
+            "_contract.address":         0x2d4c3caffbeab845,
             "_contract.storage_path":    FLOAT.FLOATCollectionStoragePath,
             "_contract.public_path":     FLOAT.FLOATCollectionPublicPath,
             "_contract.external_domain": "https://floats.city/"
+            "_contract.type":            Type<{{_contract.name}}.NFT>()
         }
     }
 
-     pub fun getNFTAttributes(_ nft: &FLOAT.NFT): {String:AnyStruct}{
+     pub fun getNFTAttributes(_ nft: &{{_contract.name}}.NFT): {String:AnyStruct}{
             return {
                 //display
-                "_displayName": (():String){
-                    return nft.eventName
-                }(),
+                "_displayName": nft.eventName
                 "_display.description": nft.eventDescription
                 "_display.thumbnail": nft.eventImage,
                 //medias 
                 "_medias": [nft.eventImage],
                 //other traits 
-                "type": nft.GetType(),
                 "eventName": nft.eventName,
                 "eventDescription" : nft.eventDescription,
                 "eventHost": nft.eventHost,
@@ -45,6 +44,8 @@ pub contract FLOATWrapper {
                 "dateReceived": nft.dateReceived, 
                 "royaltyAddress": Address(0x5643fd47a29770e7),
                 "royaltyPercentage": 5.0 
+                //generated
+                "type": nft.GetType(),
             }
     }
     
@@ -78,8 +79,8 @@ pub contract FLOATWrapper {
                 self.views[view] = "generated"
             }
 
-            if let nft = FLOATWrapper.getRef(self.account, self.id){
-                self.attributes = FLOATWrapper.getNFTAttributes(nft)
+            if let nft = {{_contract.name}}Wrapper.getRef(self.account, self.id){
+                self.attributes = {{_contract.name}}Wrapper.getNFTAttributes(nft)
                 if let nftMetadata = nft as? &AnyResource{MetadataViews.Resolver} {
                     if let resolvedTypes = self.nftMetadata.getViews(){
                         for type in resolvedTypes{
