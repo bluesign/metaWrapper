@@ -3,6 +3,16 @@ import MetadataWrapper from 0x
 
 pub contract FLOATWrapper {
 
+    pub fun getRef(account: Address, id: UInt64): &FLOAT.NFT?{
+        if let collection = getAccount(account).getCapability(self.contractData["_contract.public_path"]!)
+                                               .borrow<&FLOAT.Collection{FLOAT.CollectionPublic}>(){
+            if let nft = collection.borrowFLOAT(id: id){
+                return nft
+            }
+        }
+        return nil
+    }
+
     pub fun getContractAttributes(){
         return {
             "_contract.type":            Type<FLOAT.NFT>()
@@ -38,24 +48,48 @@ pub contract FLOATWrapper {
             }
     }
     
+    pub var contractData: {String:AnyStruct}
+
+    pub fun setup(){
+        self.contractData = self.getContractAttributes()
+        destroy self.account.load<@AnyResource>(from: )StoragePath(identifier:self.contractData["_contract.name"]!))
+        self.account.save(<- create Wrapper(contractData: self.contractData), to:StoragePath(identifier:self.contractData["_contract.name"]!))
+
+        self.account.unlink(PublicPath(identifier:data["_contract.name"]!))
+        self.account.link<&MetadataWrapper.WrapperInterface>{PublicPath(identifier:data["_contract.name"]!), StoragePath(identifier:self.contractData["_contract.name"]!))
+        
+        self.account.unlink(PublicPath(identifier:data["_contract.public_path"]!))
+        self.account.link<&MetadataWrapper.WrapperInterface>(self.contractData["_contract.public_path"]!, StoragePath(identifier:self.contractData["_contract.name"]!))
+    }
+
     pub init(){
-        var data = self.getContractAttributes()
-        self.account.save(<- create Wrapper(contractData: self.data), to:StoragePath(identifier:data["_contract.name"]!))
-        self.account.link<&MetadataWrapper.WrapperInterface>{(PublicPath(identifier:data["_contract.name"]!), StoragePath(identifier:data["_contract.name"]!))
-        self.account.link<&MetadataWrapper.WrapperInterface>(data["_contract.public_path"]!, StoragePath(identifier:data["_contract.name"]!))
+        self.setup()
     }
 
     pub resource Wrapper : MetadataWrapper.WrapperInterface {
        
-        pub fun getRef(): &FLOAT.NFT?{
-            if let col = owner.getCapability(self.contractData["_contract.public_path"]!).borrow<&FLOAT.Collection{FLOAT.CollectionPublic}>(){
-                if let nft = col.borrowFLOAT(id: self.id){
-                    return nft
+        pub fun setData(address: address, id: UInt64){
+            self.address = address
+            self.id = id
+            self.attributes = {}
+            self.views = {}
+            
+            for view in MetadataWrapper.baseViews(){
+                self.views[view] = "generated"
+            }
+
+            if let nft = FLOATWrapper.getRef(self.account, self.id){
+                self.attributes = FLOATWrapper.getNFTAttributes(nft)
+                if let nftMetadata = nft as? &AnyResource{MetadataViews.Resolver} {
+                    if let resolvedTypes = self.nftMetadata.getViews(){
+                        for type in resolvedTypes{
+                            views[type]="original"
+                        }
+                    }
                 }
             }
-            return nil
         }
-
+        
         pub var address: Address
         pub var type: Type
         pub var id : UInt64
@@ -63,11 +97,7 @@ pub contract FLOATWrapper {
         pub var contractData: {String:AnyStruct}
         pub var attributes: {String:AnyStruct}
         pub var views: {Type: String}
-
-        pub fun getAttributes(): {String:AnyStruct}{
-            return FLOATWrapper.getNFTAttributes(self.getRef())
-        }
-
+    
         pub fun resolveView(_ view: Type): AnyStruct? {                
             if let viewLocation = self.views[view] {
                 if viewLocation=="generated"{
@@ -82,26 +112,7 @@ pub contract FLOATWrapper {
             return nil 
         }
 
-        pub fun setData(address: address, id: UInt64){
-            self.address = address
-            self.id = id
-            self.attributes = self.getAttributes()
-            self.views = {}
-            for view in MetadataWrapper.baseViews(){
-                self.views[view] = "generated"
-            }
-
-            if let nft = self.getRef(){
-                if let nftMetadata = nft as? &AnyResource{MetadataViews.Resolver} {
-                    if let resolvedTypes = self.nftMetadata.getViews(){
-                        for type in resolvedTypes{
-                            views[type]="original"
-                        }
-                    }
-                }
-            }
-        }
-
+       
         pub fun getViews(): [Type] {
             return self.views.keys()
         }
