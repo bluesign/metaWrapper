@@ -3,34 +3,19 @@ import MetadataWrapper from 0x
 
 pub contract FLOATWrapper {
 
-    pub var contractData : NFTContractData
-    pub var type: Type
-    pub init(){
-        self.type = Type<FLOAT.NFT>()
-        self.contractData = NFTContractData(
-                                name: "FLOAT",
-                                address: 0x2d4c3caffbeab845,
-                                storage_path: "FLOAT.FLOATCollectionStoragePath",
-                                public_path: "FLOAT.FLOATCollectionPublicPath",
-                                public_collection_name: "FLOAT.CollectionPublic",
-                                external_domain: "https://floats.city/"
-        )
-
-        self.account.save(<- create Wrapper(self.account.address, 0), to:StoragePath(identifier:self.contractData.name))
-        self.account.link<&MetadataWrapper.WrapperInterface>{(PublicPath(identifier:self.contractData.name), StoragePath(identifier:self.contractData.name))
-        self.account.link<&MetadataWrapper.WrapperInterface>(FLOAT.FLOATCollectionPublicPath, StoragePath(identifier:self.contractData.name))
+    pub fun getConttracrAttributes(){
+        return {
+            "_contract.type":  Type<FLOAT.NFT>()
+            "_contract.name": "FLOAT",
+            "_contract.address": Address(0x2d4c3caffbeab845),
+            "_contract.storage_path": FLOAT.FLOATCollectionStoragePath,
+            "_contract.public_path": FLOAT.FLOATCollectionPublicPath,
+            "_contract.public_collection_name" "FLOAT.CollectionPublic",
+            "_contract.external_domain": "https://floats.city/"
+        }
     }
 
-    pub resource Wrapper : MetadataWrapper.WrapperInterface {
-        
-        pub var address: Address
-        pub var id : UInt64
-        pub var type: Type
-        pub var contractData : NFTContractData
-        pub var publicPath : PublicPath
-
-
-        pub fun getDict(_ nft: &FLOAT.NFT): {String:AnyStruct}{
+     pub fun getNFTAttributes(_ nft: &FLOAT.NFT): {String:AnyStruct}{
             return {
                 //display
                 "_displayName": nft.eventName,
@@ -41,6 +26,7 @@ pub contract FLOATWrapper {
                 "_medias": [nft.eventImage],
 
                 //other traits 
+                "type": nft.GetType(),
                 "eventName": nft.eventName,
                 "eventDescription" : nft.eventDescription,
                 "eventHost": nft.eventHost,
@@ -51,17 +37,37 @@ pub contract FLOATWrapper {
                 "royaltyAddress": Address(0x5643fd47a29770e7),
                 "royaltyPercentage": 5.0 
             }
+    }
+    
+    pub init(){
+        var data = self.getConttracrAttributes()
+        self.account.save(<- create Wrapper(contractData: self.data), to:StoragePath(identifier:data["_contract.name"]!))
+        self.account.link<&MetadataWrapper.WrapperInterface>{(PublicPath(identifier:data["_contract.name"]!), StoragePath(identifier:data["_contract.name"]!))
+        self.account.link<&MetadataWrapper.WrapperInterface>(data["_contract.public_path"]!, StoragePath(identifier:data["_contract.name"]!))
+    }
 
+    pub resource Wrapper : MetadataWrapper.WrapperInterface {
+        
+        pub var address: Address
+        pub var id : UInt64
+        pub var type: Type
+        pub var publicPath : PublicPath
+        pub var contractData {String:AnyStruct}
+
+        pub fun getNFTAttributes(_ nft: &FLOAT.NFT): {String:AnyStruct}{
+            return FLOATWrapper.getNFTAttributes(nft)
         }
-
+       
         pub fun getRef(): &FLOAT.NFT?{
-            if let col = owner.getCapability(self.publicPath).borrow<&FLOAT.Collection{FLOAT.CollectionPublic}>(){
+            if let col = owner.getCapability(self.contractData["_contract.public_path"]!).borrow<&FLOAT.Collection{FLOAT.CollectionPublic}>(){
                 if let nft = col.borrowFLOAT(id: self.id){
                     return nft
                 }
             }
             return nil
         }
+
+        //////// END OF CONFIG ////////
 
         pub fun resolveView(_ view: Type): AnyStruct? {
                 
@@ -118,17 +124,10 @@ pub contract FLOATWrapper {
             return nil
         }
 
-        init(address: address, id: UInt64){
-            self.address = address 
-            self.id = id 
-            self.publicPath = FLOAT.FLOATCollectionPublicPath
-            self.contractData = FLOATWrapper.contractData 
-        }
             
         pub fun setData(address: address, id: UInt64){
             self.address = address
             self.id = id
-            self.type = FLOATWrapper.type
         }
 
         pub fun getViews(): [Type] {
@@ -150,6 +149,11 @@ pub contract FLOATWrapper {
 
         }
 
+        init(contractData: address){
+            self.contractData = contractData
+            self.address = self.account.address 
+            self.id = 0
+        }
         
 
     }
