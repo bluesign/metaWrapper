@@ -17,7 +17,9 @@ pub contract FLOATWrapper {
      pub fun getNFTAttributes(_ nft: &FLOAT.NFT): {String:AnyStruct}{
             return {
                 //display
-                "_displayName": nft.eventName,
+                "_displayName": (():String){
+                    return nft.eventName
+                }(),
                 "_display.description": nft.eventDescription
                 "_display.thumbnail": nft.eventImage,
                 //medias 
