@@ -16,18 +16,43 @@ pub contract FLOATWrapper {
                                 external_domain: "https://floats.city/"
         )
 
-        self.account.save(Wrapper(self.account.address, 0), to:StoragePath(identifier:self.contractData.name))
-        self.account.link(PublicPath(identifier:self.contractData.name), StoragePath(identifier:self.contractData.name))
-        self.account.link(FLOAT.FLOATCollectionPublicPath, StoragePath(identifier:self.contractData.name))
+        self.account.save(<- create Wrapper(self.account.address, 0), to:StoragePath(identifier:self.contractData.name))
+        self.account.link<&MetadataWrapper.WrapperInterface>{(PublicPath(identifier:self.contractData.name), StoragePath(identifier:self.contractData.name))
+        self.account.link<&MetadataWrapper.WrapperInterface>(FLOAT.FLOATCollectionPublicPath, StoragePath(identifier:self.contractData.name))
     }
 
-    pub struct Wrapper : MetadataWrapper.WrapperInterface {
+    pub resource Wrapper : MetadataWrapper.WrapperInterface {
         
         pub var address: Address
         pub var id : UInt64
         pub var type: Type
         pub var contractData : NFTContractData
         pub var publicPath : PublicPath
+
+
+        pub fun getDict(_ nft: &FLOAT.NFT): {String:AnyStruct}{
+            return {
+                //display
+                "_displayName": nft.eventName,
+                "_display.description": nft.eventDescription
+                "_display.thumbnail": nft.eventImage,
+
+                //medias 
+                "_medias": [nft.eventImage],
+
+                //other traits 
+                "eventName": nft.eventName,
+                "eventDescription" : nft.eventDescription,
+                "eventHost": nft.eventHost,
+                "eventId": nft.eventId,
+                "eventImage": nft.eventImage, 
+                "serial": nft.serial, 
+                "dateReceived": nft.dateReceived, 
+                "royaltyAddress": Address(0x5643fd47a29770e7),
+                "royaltyPercentage": 5.0 
+            }
+
+        }
 
         pub fun getRef(): &FLOAT.NFT?{
             if let col = owner.getCapability(self.publicPath).borrow<&FLOAT.Collection{FLOAT.CollectionPublic}>(){
@@ -46,34 +71,35 @@ pub contract FLOATWrapper {
                         return resolved
                     }
                 }
+                var dict = getDict(nft)
 
                 switch view {
                     case Type<MetadataViews.Display>():
                         return MetadataViews.Display(
-                            name: nft.eventName,
-                            description: nft.eventDescription,
-                            thumbnail: HTTPFile(url: nft.eventImage)
+                            name: dict["_display.name"]!,
+                            description: dict["_display.description"]!,
+                            thumbnail: HTTPFile(url: dict["_display.thumbnail"]!)
                         )
 
                     case Type<MetadataViews.Medias>():
-                        return MetadataViews.Medias(
-                            items:[Media(file:HTTPFile(url: nft.eventImage) , mediaType: "image")]
-                        )
+                        if let medias = dict["_medias"]{
+                            var items:[Media] = []
+                            for media in medias {
+                                items.append(Media(file:HTTPFile(url: media) , mediaType: "image"))
+                            }
+                            return MetadataViews.Medias(
+                                items:items
+                            )
+                        }
+                        return nil 
 
                     case Type<MetadataViews.Traits>():
-
                         var traits:[MetadataViews.Trait] = []
-                        
-                        traits.append(Trait(name:"eventName" ,value: nft.eventName, displayType: nil, rarity: nil))
-                        traits.append(Trait(name:"eventDescription" ,value: nft.eventDescription, displayType: nil, rarity: nil))
-                        traits.append(Trait(name:"eventHost" ,value: nft.eventHost, displayType: nil, rarity: nil))
-                        traits.append(Trait(name:"eventId" ,value: nft.eventId, displayType: nil, rarity: nil))
-                        traits.append(Trait(name:"eventImage" ,value: nft.eventImage, displayType: nil, rarity: nil))
-                        traits.append(Trait(name:"serial" ,value: nft.serial, displayType: nil, rarity: nil))
-                        traits.append(Trait(name:"dateReceived" ,value: nft.dateReceived, displayType: nil, rarity: nil))
-                        traits.append(Trait(name:"royaltyAddress" ,value: Address(0x5643fd47a29770e7), displayType: nil, rarity: nil))
-                        traits.append(Trait(name:"royaltyPercentage" ,value: 5.0 , displayType: nil, rarity: nil))
-
+                        for k in dict.keys(){
+                            if k[0]!="_"{
+                                traits.append(Trait(name:k ,value: dict[k]!, displayType: nil, rarity: nil))
+                            }
+                        }
                         return MetadataViews.Traits(traits)
 
                      case Type<MetadataViews.NFTView>():
@@ -112,7 +138,7 @@ pub contract FLOATWrapper {
                     Type<MetadataViews.Display>(): "local"
                 }
                 if let nftMetadata = nft as? &AnyResource{MetadataViews.Resolver} {
-                     if let resolvedTypes = self.NftMetadata.getViews(){
+                     if let resolvedTypes = self.nftMetadata.getViews(){
                         for type in resolvedTypes{
                             views[type]="original"
                         }
